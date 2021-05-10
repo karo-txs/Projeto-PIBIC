@@ -1,26 +1,22 @@
 import pandas as pd
-import matplotlib.pyplot as plt
 import warnings
+import matplotlib.pyplot as plt
 from tabulate import tabulate
-
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.metrics import (f1_score, precision_score, recall_score, accuracy_score,
                              confusion_matrix, roc_auc_score, balanced_accuracy_score)
-
 from imblearn.metrics import geometric_mean_score, classification_report_imbalanced
-
 from keras.preprocessing.text import Tokenizer
+from models.resampling import Resampling
 
-from models.classes import Resampling
 
-
-def prepare_data(data, test_size, random_state, resampling=None):
-    if resampling is None:
+def prepare_data(data, test_size, resampling='origin'):
+    if resampling == 'origin':
         X_train, X_test, Y_train, Y_test = train_test_split(data['RequirementText'], data['Class'],
                                                             test_size=test_size,
-                                                            stratify=data['Class'], random_state=random_state)
+                                                            stratify=data['Class'])
 
         tokenizer = Tokenizer()
         tokenizer.fit_on_texts(X_train)
@@ -40,7 +36,7 @@ def prepare_data(data, test_size, random_state, resampling=None):
         strategie = Resampling(resampling)
         X_train, X_test, Y_train, Y_test = train_test_split(data['RequirementText'], data['Class'],
                                                             test_size=test_size,
-                                                            stratify=data['Class'], random_state=random_state)
+                                                            stratify=data['Class'])
         tokenizer = Tokenizer()
         tokenizer.fit_on_texts(X_train)
 
@@ -57,7 +53,7 @@ def prepare_data(data, test_size, random_state, resampling=None):
 
         x_train, y_train = strategie.fit_resample(x_train, y_train)
 
-    return vocab_size, x_train, y_train, x_test, y_test
+    return x_train, y_train, x_test, y_test
 
 
 def display_results(pred_mlp, y_test):
@@ -113,20 +109,20 @@ def get_results(pred_mlp, y_test):
     return ac, ba, precisao, recall, f1, geo, auc
 
 
-def count_classes(y_train, y_test):
-    count_origin = []
+def count_classes(y_train, y_test, is_smoteenn=False):
+    count = []
 
     for i in range(11):
         if i == 0:
             class_ = y_train.groupby(i).count()[1][1] + y_test.groupby(i).count()[1][1]
         else:
             class_ = y_train.groupby(i).count()[0][1] + y_test.groupby(i).count()[0][1]
-        count_origin.append(class_)
+        count.append(class_)
 
-    total = sum(count_origin)
-    count_origin.append(total)
+    total = sum(count)
+    count.append(total)
 
-    return count_origin
+    return count
 
 
 def dataset_detail(datasets):
@@ -155,7 +151,7 @@ def dataset_detail(datasets):
     y_train = pd.DataFrame(datasets['smoteenn']['y_train'])
     y_test = pd.DataFrame(datasets['smoteenn']['y_test'])
 
-    count_smoteenn = count_classes(y_train, y_test)
+    count_smoteenn = count_classes(y_train, y_test, True)
 
     y_train = pd.DataFrame(datasets['smotetomek']['y_train'])
     y_test = pd.DataFrame(datasets['smotetomek']['y_test'])
@@ -165,7 +161,7 @@ def dataset_detail(datasets):
     df = pd.DataFrame(list(zip(classes, count_origin, count_tomek, count_smote, count_bd_smote, count_smoteenn,
                                count_smotetomek)),
                       columns=['classes', 'original', 'tomek', 'smote', 'bdsmote', 'smoteenn', 'smotetomek'])
-    df.to_excel('results/RequirementsPerClass.xlsx')
+    df.to_excel('../results/details_datasets.xlsx')
 
 
 def plot_training_history(history):
@@ -257,7 +253,7 @@ def print_table(results, export_table=False):
 
                    results['tomek']['adamax']['acuracia_balanceada'],
                    results['tomek']['rmsprop']['acuracia_balanceada'],
-                   results['tomek']['sgdm-cs']['acuracia_balanceada'],
+                   results['tomek']['sgdm']['acuracia_balanceada'],
                    results['tomek']['adamax-cs']['acuracia_balanceada'],
                    results['tomek']['rmsprop-cs']['acuracia_balanceada'],
                    results['tomek']['sgdm-cs']['acuracia_balanceada'],
@@ -422,3 +418,60 @@ def print_table(results, export_table=False):
                           columns=['combinações', 'ba', 'f1', 'gmean', 'auc'])
         df.to_excel('results/Results.xlsx')
     print(tabulate(info, headers='keys', tablefmt='fancy_grid'))
+
+
+def print_table_single(results, dataname, export_results):
+    info = {'combinacoes': ['adamax+'+str(dataname),
+                            'rmsprop+'+str(dataname),
+                            'sgdm+'+str(dataname),
+                            'adamax+'+str(dataname)+'+cs',
+                            'rmsprop+'+str(dataname)+'+cs',
+                            'sgdm+'+str(dataname)+'+cs'
+                            ],
+            'ba': [results[dataname]['adamax']['acuracia_balanceada'],
+                   results[dataname]['rmsprop']['acuracia_balanceada'],
+                   results[dataname]['sgdm']['acuracia_balanceada'],
+                   results[dataname]['adamax-cs']['acuracia_balanceada'],
+                   results[dataname]['rmsprop-cs']['acuracia_balanceada'],
+                   results[dataname]['sgdm-cs']['acuracia_balanceada']
+                   ],
+            'f1': [results[dataname]['adamax']['f1'],
+                   results[dataname]['rmsprop']['f1'],
+                   results[dataname]['sgdm']['f1'],
+                   results[dataname]['adamax-cs']['f1'],
+                   results[dataname]['rmsprop-cs']['f1'],
+                   results[dataname]['sgdm-cs']['f1'],
+                   ],
+            'gmean': [results[dataname]['adamax']['gmean'],
+                      results[dataname]['rmsprop']['gmean'],
+                      results[dataname]['sgdm']['gmean'],
+                      results[dataname]['adamax-cs']['gmean'],
+                      results[dataname]['rmsprop-cs']['gmean'],
+                      results[dataname]['sgdm-cs']['gmean']
+                      ],
+            'auc': [results[dataname]['adamax']['auc'],
+                    results[dataname]['rmsprop']['auc'],
+                    results[dataname]['sgdm']['auc'],
+                    results[dataname]['adamax-cs']['auc'],
+                    results[dataname]['rmsprop-cs']['auc'],
+                    results[dataname]['sgdm-cs']['auc'],
+                    ],
+            }
+
+    print(tabulate(info, headers='keys', tablefmt='fancy_grid'))
+    if export_results:
+        df = pd.DataFrame(list(zip(info['combinacoes'], info['ba'], info['f1'], info['gmean'], info['auc'])),
+                          columns=['combinacoes', 'ba', 'f1', 'gmean', 'auc'])
+        df.to_csv('../results/results_'+str(dataname)+'.csv')
+
+
+def get_time(valor):
+    duration = '{:.2f}s'.format(valor)
+    if valor > 60:
+        valor = valor / 60
+        duration = '{:.2f}m'.format(valor)
+        if valor > 60:
+            valor = valor / 60
+            duration = '{:.2f}h'.format(valor)
+    return duration
+
