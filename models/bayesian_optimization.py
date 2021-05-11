@@ -109,9 +109,9 @@ class Hyper:
         if dataname == 'origin' or dataname == 'tomek':
             return 'tanh'
         elif dataname == 'smote' or dataname == 'bdsmote':
-            return 'elu'
+            return 'tanh'
         elif dataname == 'smoteenn' or dataname == 'smotetomek':
-            return 'relu'
+            return 'tanh'
 
     def get_optimizer(self, optimizer_name, learn_rate):
         opt = None

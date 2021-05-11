@@ -1,5 +1,6 @@
 import pandas as pd
 import warnings
+import csv
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 from sklearn.model_selection import train_test_split
@@ -474,4 +475,58 @@ def get_time(valor):
             valor = valor / 60
             duration = '{:.2f}h'.format(valor)
     return duration
+
+
+def update_results_per_cross(results, iter, resampling):
+    path = '../results/results_'+str(resampling)+'_detail.csv'
+    lines = {'iter': iter,
+             'combinacoes': 'adamax',
+             'acuracia': results['adamax']['acuracia'],
+             'ba': results['adamax']['acuracia_balanceada'],
+             'precisao': results['adamax']['precisao'],
+             'recall': results['adamax']['recall'],
+             'f1': results['adamax']['f1'],
+             'gmean': results['adamax']['gmean'],
+             'auc': results['adamax']['auc']}
+
+    try:
+        open(path, 'r')
+        with open(path, 'a') as arq:
+            writer = csv.writer(arq)
+            writer.writerow(lines.values())
+
+            write_lines(iter, writer, results, 'rmsprop')
+            write_lines(iter, writer, results, 'sgdm')
+            write_lines(iter, writer, results, 'adamax-cs')
+            write_lines(iter, writer, results, 'rmsprop-cs')
+            write_lines(iter, writer, results, 'sgdm-cs')
+
+    except IOError:
+        data = pd.DataFrame(columns=lines.keys())
+        data = data.append(lines, ignore_index=True)
+        data.to_csv(path, index=False)
+
+        open(path, 'r')
+        with open(path, 'a') as arq:
+            writer = csv.writer(arq)
+
+            write_lines(iter, writer, results, 'rmsprop')
+            write_lines(iter, writer, results, 'sgdm')
+            write_lines(iter, writer, results, 'adamax-cs')
+            write_lines(iter, writer, results, 'rmsprop-cs')
+            write_lines(iter, writer, results, 'sgdm-cs')
+
+
+def write_lines(iter, writer, results, alg):
+    lines = {'iter': iter,
+             'combinacoes': alg,
+             'acuracia': results[alg]['acuracia'],
+             'ba': results[alg]['acuracia_balanceada'],
+             'precisao': results[alg]['precisao'],
+             'recall': results[alg]['recall'],
+             'f1': results[alg]['f1'],
+             'gmean': results[alg]['gmean'],
+             'auc': results[alg]['auc']}
+
+    writer.writerow(lines.values())
 

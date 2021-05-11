@@ -15,7 +15,7 @@ def run_hyper(resamplings, algs):
 if __name__ == '__main__':
     dataset = DataSet(data=pd.read_csv('../dataset/PROMISE_exp_preprocessed.csv', encoding='utf-8'))
 
-    resamplings = ['origin', 'tomek', 'smote', 'bdsmote', 'smoteenn', 'smotetomek']
+    resamplings = ['origin', 'bdsmote', 'smotetomek']
     algs = ['adamax', 'rmsprop', 'sgdm']
 
     run_hyper(resamplings, algs)

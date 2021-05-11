@@ -9,13 +9,13 @@ from keras import backend as K
 import keras
 import tensorflow
 import models.basictools as bt
-from models.costsensitive_weights import Weigths
+from models.costsensitive_weights import WeigthsV2
 
 
 def cross_val_single(dataset, resampling, export_results=False):
-    results = get_structure_results()
+    results_final = get_structure_results()
     inicio = time.time()
-    for i in range(30):
+    for i in range(5):
         print(f'-- {i+1} --')
         dataset.define_dataset_single(resampling)
 
@@ -37,15 +37,18 @@ def cross_val_single(dataset, resampling, export_results=False):
 
         params = {'adamax': params_adamax, 'rmsprop': params_rmsprop, 'sgdm': params_sgdm}
 
-        weights = Weigths().get_class_weight(data=pd.read_csv('../dataset/PROMISE_exp_preprocessed.csv',
-                                                              encoding='utf-8'))
+        weights = WeigthsV2().get_class_weight()
 
         results = run_cross_validation(x_train, y_train, x_test, y_test, params, weights)
+        if export_results:
+            bt.update_results_per_cross(results, (i+1), resampling)
+
+        define_results(results_final, results)
 
     fim = time.time()
     duration = bt.get_time(fim - inicio)
-    results = {resampling: results}
-    bt.print_table_single(results, resampling, export_results)
+    results_final = {resampling: define_average(results_final)}
+    bt.print_table_single(results_final, resampling, export_results)
     print('Duration per execution: ' + duration)
 
 
@@ -77,22 +80,16 @@ def run_cross_validation(x_train,
         es = EarlyStopping(monitor='val_loss', mode='min', verbose=0, patience=5, restore_best_weights=True)
         callbacks_list.append(es)
 
+        y_test_bool = np.argmax(y_test, axis=1)
+
+        # Blind-sensitive
+
         model_adamax.fit(X_train, Y_train,
                          epochs=50,
                          verbose=0,
                          validation_data=(X_valid, Y_valid),
                          callbacks=callbacks_list)
 
-        model_adamax_cs.fit(X_train, Y_train,
-                            epochs=50,
-                            verbose=0,
-                            validation_data=(X_valid, Y_valid),
-                            callbacks=callbacks_list,
-                            class_weight=weights)
-
-        y_test_bool = np.argmax(y_test, axis=1)
-
-        # Blind-sensitive
         y_pred = model_adamax.predict(x_test)
         y_pred_bool = np.argmax(y_pred, axis=1)
 
@@ -106,6 +103,14 @@ def run_cross_validation(x_train,
                                                       'auc': auc}, True)
 
         # Cost-sensitive
+
+        model_adamax_cs.fit(X_train, Y_train,
+                            epochs=50,
+                            verbose=0,
+                            validation_data=(X_valid, Y_valid),
+                            callbacks=callbacks_list,
+                            class_weight=weights)
+
         y_pred = model_adamax_cs.predict(x_test)
         y_pred_bool = np.argmax(y_pred, axis=1)
 
@@ -125,12 +130,14 @@ def run_cross_validation(x_train,
         model_rmsprop = get_model(params['rmsprop'], optimizer_name)
         model_rmsprop_cs = get_model(params['rmsprop'], optimizer_name)
 
-        weights = {0: 0.6004, 1: 0.6816, 2: 0.9353, 3: 0.2092, 4: 0.599, 5: 0.2871, 6: 0.5017, 7: 0.7241, 8: 0.5991,
-                   9: 0.4916, 10: 0.2107}
         callbacks_list = []
 
         es = EarlyStopping(monitor='val_loss', mode='min', verbose=0, patience=5, restore_best_weights=True)
         callbacks_list.append(es)
+
+        y_test_bool = np.argmax(y_test, axis=1)
+
+        # Blind-sensitive
 
         model_rmsprop.fit(X_train, Y_train,
                           epochs=50,
@@ -138,16 +145,6 @@ def run_cross_validation(x_train,
                           validation_data=(X_valid, Y_valid),
                           callbacks=callbacks_list)
 
-        model_rmsprop_cs.fit(X_train, Y_train,
-                             epochs=50,
-                             verbose=0,
-                             validation_data=(X_valid, Y_valid),
-                             callbacks=callbacks_list,
-                             class_weight=weights)
-
-        y_test_bool = np.argmax(y_test, axis=1)
-
-        # Blind-sensitive
         y_pred = model_rmsprop.predict(x_test)
         y_pred_bool = np.argmax(y_pred, axis=1)
 
@@ -161,17 +158,25 @@ def run_cross_validation(x_train,
                                                       'auc': auc}, True)
 
         # Cost-sensitive
+
+        model_rmsprop_cs.fit(X_train, Y_train,
+                             epochs=50,
+                             verbose=0,
+                             validation_data=(X_valid, Y_valid),
+                             callbacks=callbacks_list,
+                             class_weight=weights)
+
         y_pred = model_rmsprop_cs.predict(x_test)
         y_pred_bool = np.argmax(y_pred, axis=1)
 
         ac, ba, precisao, recall, f1, geo, auc = bt.get_results(y_pred_bool, y_test_bool)
         define_unit_results(results, str(optimizer_name)+'-'+str('cs'), {'acuracia': ac,
-                                                                  'acuracia_balanceada': ba,
-                                                                  'precisao': precisao,
-                                                                  'recall': recall,
-                                                                  'f1': f1,
-                                                                  'gmean': geo,
-                                                                  'auc': auc}, True)
+                                                                         'acuracia_balanceada': ba,
+                                                                         'precisao': precisao,
+                                                                         'recall': recall,
+                                                                         'f1': f1,
+                                                                         'gmean': geo,
+                                                                         'auc': auc}, True)
 
         # ---------------------- #
         #          SGDM          #
@@ -186,22 +191,16 @@ def run_cross_validation(x_train,
         es = EarlyStopping(monitor='val_loss', mode='min', verbose=0, patience=5, restore_best_weights=True)
         callbacks_list.append(es)
 
+        y_test_bool = np.argmax(y_test, axis=1)
+
+        # Blind-sensitive
+
         model_sgdm.fit(X_train, Y_train,
                        epochs=50,
                        verbose=0,
                        validation_data=(X_valid, Y_valid),
                        callbacks=callbacks_list)
 
-        model_sgdm_cs.fit(X_train, Y_train,
-                          epochs=50,
-                          verbose=0,
-                          validation_data=(X_valid, Y_valid),
-                          callbacks=callbacks_list,
-                          class_weight=weights)
-
-        y_test_bool = np.argmax(y_test, axis=1)
-
-        # Blind-sensitive
         y_pred = model_sgdm.predict(x_test)
         y_pred_bool = np.argmax(y_pred, axis=1)
 
@@ -215,6 +214,14 @@ def run_cross_validation(x_train,
                                                       'auc': auc}, True)
 
         # Cost-sensitive
+
+        model_sgdm_cs.fit(X_train, Y_train,
+                          epochs=50,
+                          verbose=0,
+                          validation_data=(X_valid, Y_valid),
+                          callbacks=callbacks_list,
+                          class_weight=weights)
+
         y_pred = model_sgdm_cs.predict(x_test)
         y_pred_bool = np.argmax(y_pred, axis=1)
 
@@ -231,21 +238,15 @@ def run_cross_validation(x_train,
     return results
 
 
-def set_results(results, dataset, dataname, params):
-    x_train, y_train, x_test, y_test = dataset.get_data(dataname)
+def define_results(results_final, results):
+    define_unit_results(results_final, 'adamax', results)
+    define_unit_results(results_final, 'adamax-cs', results)
 
-    results_cv = run_cross_validation(x_train, y_train, x_test, y_test, params)
+    define_unit_results(results_final, 'rmsprop', results)
+    define_unit_results(results_final, 'rmsprop-cs', results)
 
-    define_unit_results(results, 'adamax', results_cv)
-    define_unit_results(results, 'adamax-cs', results_cv)
-
-    define_unit_results(results, 'rmsprop', results_cv)
-    define_unit_results(results, 'rmsprop-cs', results_cv)
-
-    define_unit_results(results, 'sgdm', results_cv)
-    define_unit_results(results, 'sgdm-cs', results_cv)
-
-    return results
+    define_unit_results(results_final, 'sgdm', results)
+    define_unit_results(results_final, 'sgdm-cs', results)
 
 
 def define_average(results):

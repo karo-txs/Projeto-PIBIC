@@ -1,20 +1,14 @@
 import pandas as pd
 from models.dataset import DataSet
-from models.costsensitive_weights import WeigthsV1, WeigthsV2, WeigthsV3
+from models.costsensitive_weights import Weigths, WeigthsV2
 
 if __name__ == '__main__':
     dataset = DataSet(data=pd.read_csv('../dataset/PROMISE_exp_preprocessed.csv', encoding='utf-8'))
 
-    # hyper = WeigthsV1()
-    # hyper.run_(dataset, 'origin', 'adamax')
-    # # hyper.update_weights_list('adamax+origin+cs')
-    #
-    # hyper = WeigthsV2()
-    # hyper.run_(dataset, 'origin', 'adamax')
-    # hyper.update_weights_list('adamax+origin+cs')
-
-    # weights = {0: 0.128, 1: 0.128, 2: 0.128, 3: 0.0464, 4: 0.128, 5: 0.0464, 6: 0.0464, 7: 0.128, 8: 0.128,
-    #            9: 0.0464, 10: 0.0464}
-
-    weights = WeigthsV3()
+    weights = Weigths()
     print(weights.get_class_weight(data=pd.read_csv('../dataset/PROMISE_exp_preprocessed.csv', encoding='utf-8')))
+
+    weights = WeigthsV2()
+    weights.run_(dataset, 'origin', 500)
+    weights.update_weigths_list('adamax+origin')
+    # 0.611 | 0.8839 | 0.9953 | 0.371 | 0.4918 | 0.5149 | 0.3797 | 0.5314 | 0.3008 | 0.7847 | 0.5489 | 0.2379
