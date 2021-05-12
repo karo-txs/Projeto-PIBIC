@@ -11,5 +11,5 @@ def run_cross_valid(dataset, resamplings):
 if __name__ == '__main__':
     dataset = DataSet(data=pd.read_csv('../dataset/PROMISE_exp_preprocessed.csv', encoding='utf-8'))
 
-    resamplings = ['bdsmote']
+    resamplings = ['origin']
     run_cross_valid(dataset, resamplings)

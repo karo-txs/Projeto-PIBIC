@@ -30,7 +30,7 @@ class Hyper:
         x_train, y_train, x_test, y_test = dataset.get_data(resampling)
         act = self.get_act(resampling)
 
-        def fitness_funcc(hidden_size, lr):
+        def fitness_funcc(hidden_size, lr, dropout, batch_size):
             results = {'acuracia': [],
                        'acuracia_balanceada': [],
                        'precisao': [],
@@ -48,7 +48,7 @@ class Hyper:
 
                 model = tensorflow.keras.models.Sequential()
                 model.add(Dense(int(hidden_size), input_dim=x_train.shape[1], activation=act))
-                model.add(Dropout(0.5))
+                model.add(Dropout(float('{:.2f}'.format(dropout))))
 
                 model.add(Dense(11, activation='softmax'))
 
@@ -68,7 +68,8 @@ class Hyper:
                           epochs=50,
                           verbose=0,
                           validation_data=(X_valid, Y_valid),
-                          callbacks=callbacks_list)
+                          callbacks=callbacks_list,
+                          batch_size=int(batch_size))
 
                 y_test_bool = np.argmax(y_test, axis=1)
 
@@ -90,7 +91,7 @@ class Hyper:
             return results['f1']
 
         # Bounded region of parameter space
-        pbounds = {'hidden_size': (14, 250), 'lr': (0.0001, 0.01)}
+        pbounds = {'hidden_size': (14, 250), 'lr': (0.0001, 0.01), 'dropout': (0.0, 0.5), 'batch_size': (64, 256)}
 
         optimizer = BayesianOptimization(
             f=fitness_funcc,
@@ -109,7 +110,7 @@ class Hyper:
         if dataname == 'origin' or dataname == 'tomek':
             return 'tanh'
         elif dataname == 'smote' or dataname == 'bdsmote':
-            return 'tanh'
+            return 'elu'
         elif dataname == 'smoteenn' or dataname == 'smotetomek':
             return 'tanh'
 

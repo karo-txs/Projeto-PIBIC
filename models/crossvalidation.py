@@ -9,13 +9,13 @@ from keras import backend as K
 import keras
 import tensorflow
 import models.basictools as bt
-from models.costsensitive_weights import WeigthsV2
+from models.costsensitive_weights import Weigths, WeigthsV2
 
 
 def cross_val_single(dataset, resampling, export_results=False):
     results_final = get_structure_results()
     inicio = time.time()
-    for i in range(5):
+    for i in range(30):
         print(f'-- {i+1} --')
         dataset.define_dataset_single(resampling)
 
@@ -37,7 +37,7 @@ def cross_val_single(dataset, resampling, export_results=False):
 
         params = {'adamax': params_adamax, 'rmsprop': params_rmsprop, 'sgdm': params_sgdm}
 
-        weights = WeigthsV2().get_class_weight()
+        weights = Weigths().get_class_weight()
 
         results = run_cross_validation(x_train, y_train, x_test, y_test, params, weights)
         if export_results:
